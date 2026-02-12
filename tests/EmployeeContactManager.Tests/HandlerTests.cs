@@ -3,8 +3,6 @@ using EmployeeContactManager.Api.CQRS.Handlers;
 using EmployeeContactManager.Api.CQRS.Queries;
 using EmployeeContactManager.Api.Data;
 using EmployeeContactManager.Api.Domain;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace EmployeeContactManager.Tests;
 
@@ -20,7 +18,7 @@ public class HandlerTests
         _db = new InMemoryDbProxy();
         _getAllHandler = new GetAllEmployeesHandler(_db);
         _getByNameHandler = new GetEmployeeByNameHandler(_db);
-        _addHandler = new AddEmployeesHandler(_db, NullLogger<AddEmployeesHandler>.Instance);
+        _addHandler = new AddEmployeesHandler(_db);
 
         // Seed test data
         _db.AddRange(new[]

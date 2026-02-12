@@ -4,6 +4,7 @@ using EmployeeContactManager.Api.CQRS.Handlers;
 using EmployeeContactManager.Api.CQRS.Queries;
 using EmployeeContactManager.Api.Data;
 using EmployeeContactManager.Api.Domain;
+using ILogger = Serilog.ILogger;
 
 namespace EmployeeContactManager.Api.Controllers;
 
@@ -15,18 +16,16 @@ public class EmployeeController : ControllerBase
     private readonly GetAllEmployeesHandler _getAllHandler;
     private readonly GetEmployeeByNameHandler _getByNameHandler;
     private readonly AddEmployeesHandler _addHandler;
-    private readonly ILogger<EmployeeController> _logger;
+    private static readonly ILogger Logger = AppLogger.ForContext<EmployeeController>();
 
     public EmployeeController(
         GetAllEmployeesHandler getAllHandler,
         GetEmployeeByNameHandler getByNameHandler,
-        AddEmployeesHandler addHandler,
-        ILogger<EmployeeController> logger)
+        AddEmployeesHandler addHandler)
     {
         _getAllHandler = getAllHandler;
         _getByNameHandler = getByNameHandler;
         _addHandler = addHandler;
-        _logger = logger;
     }
 
     /// <summary>
@@ -40,7 +39,7 @@ public class EmployeeController : ControllerBase
         if (page < 1 || pageSize < 1)
             return BadRequest(new { message = "Page and pageSize must be positive integers." });
 
-        _logger.LogInformation("GET /api/employee?page={Page}&pageSize={PageSize}", page, pageSize);
+        Logger.Information("GET /api/employee?page={Page}&pageSize={PageSize}", page, pageSize);
         var query = new GetAllEmployeesQuery(page, pageSize);
         var result = _getAllHandler.Handle(query);
         return Ok(result);
@@ -58,7 +57,7 @@ public class EmployeeController : ControllerBase
         if (string.IsNullOrWhiteSpace(name))
             return BadRequest(new { message = "Employee name is required." });
 
-        _logger.LogInformation("GET /api/employee/{Name}", name);
+        Logger.Information("GET /api/employee/{Name}", name);
         var query = new GetEmployeeByNameQuery(name);
         var employee = _getByNameHandler.Handle(query);
 
@@ -82,7 +81,7 @@ public class EmployeeController : ControllerBase
         var textContent = request.TextContent;
         var format = request.Format;
 
-        _logger.LogInformation("POST /api/employee — file: {FileName}, textContent length: {Len}, format: {Format}",
+        Logger.Information("POST /api/employee — file: {FileName}, textContent length: {Len}, format: {Format}",
             file?.FileName ?? "none", textContent?.Length ?? 0, format ?? "none");
 
         var employees = new List<Employee>();
@@ -109,7 +108,7 @@ public class EmployeeController : ControllerBase
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to parse uploaded file {FileName}", file.FileName);
+                Logger.Error(ex, "Failed to parse uploaded file {FileName}", file.FileName);
                 return BadRequest(new { message = $"Failed to parse file: {ex.Message}" });
             }
         }
@@ -133,7 +132,7 @@ public class EmployeeController : ControllerBase
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to parse text content");
+                Logger.Error(ex, "Failed to parse text content");
                 return BadRequest(new { message = $"Failed to parse text: {ex.Message}" });
             }
         }

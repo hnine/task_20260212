@@ -1,16 +1,16 @@
 using System.Diagnostics;
+using ILogger = Serilog.ILogger;
 
 namespace EmployeeContactManager.Api.Middleware;
 
 public class PerformanceMonitoringMiddleware
 {
     private readonly RequestDelegate _next;
-    private readonly ILogger<PerformanceMonitoringMiddleware> _logger;
+    private static readonly ILogger Logger = AppLogger.ForContext<PerformanceMonitoringMiddleware>();
 
-    public PerformanceMonitoringMiddleware(RequestDelegate next, ILogger<PerformanceMonitoringMiddleware> logger)
+    public PerformanceMonitoringMiddleware(RequestDelegate next)
     {
         _next = next;
-        _logger = logger;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -24,12 +24,12 @@ public class PerformanceMonitoringMiddleware
 
         if (elapsed > 500)
         {
-            _logger.LogWarning("⚠ Slow request: {Method} {Path} took {Elapsed}ms",
+            Logger.Warning("⚠ Slow request: {Method} {Path} took {Elapsed}ms",
                 context.Request.Method, context.Request.Path, elapsed);
         }
         else
         {
-            _logger.LogDebug("⏱ {Method} {Path} completed in {Elapsed}ms",
+            Logger.Debug("⏱ {Method} {Path} completed in {Elapsed}ms",
                 context.Request.Method, context.Request.Path, elapsed);
         }
     }

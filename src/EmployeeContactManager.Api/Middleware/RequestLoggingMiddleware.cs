@@ -1,16 +1,16 @@
 using System.Text;
+using ILogger = Serilog.ILogger;
 
 namespace EmployeeContactManager.Api.Middleware;
 
 public class RequestLoggingMiddleware
 {
     private readonly RequestDelegate _next;
-    private readonly ILogger<RequestLoggingMiddleware> _logger;
+    private static readonly ILogger Logger = AppLogger.ForContext<RequestLoggingMiddleware>();
 
-    public RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggingMiddleware> logger)
+    public RequestLoggingMiddleware(RequestDelegate next)
     {
         _next = next;
-        _logger = logger;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -20,18 +20,18 @@ public class RequestLoggingMiddleware
         var path = context.Request.Path;
         var queryString = context.Request.QueryString;
 
-        _logger.LogInformation("[{RequestId}] → {Method} {Path}{Query}",
+        Logger.Information("[{RequestId}] → {Method} {Path}{Query}",
             requestId, method, path, queryString);
 
         // Trace: log request headers
-        if (_logger.IsEnabled(LogLevel.Trace))
+        if (Logger.IsEnabled(Serilog.Events.LogEventLevel.Verbose))
         {
             var headers = new StringBuilder();
             foreach (var header in context.Request.Headers)
             {
                 headers.AppendLine($"  {header.Key}: {header.Value}");
             }
-            _logger.LogTrace("[{RequestId}] Headers:\n{Headers}", requestId, headers.ToString().TrimEnd());
+            Logger.Verbose("[{RequestId}] Headers:\n{Headers}", requestId, headers.ToString().TrimEnd());
 
             // Trace: log request body (for non-file requests)
             if (context.Request.ContentType != null &&
@@ -45,7 +45,7 @@ public class RequestLoggingMiddleware
                 if (!string.IsNullOrWhiteSpace(body))
                 {
                     var truncated = body.Length > 2000 ? body[..2000] + "... (truncated)" : body;
-                    _logger.LogTrace("[{RequestId}] Body:\n{Body}", requestId, truncated);
+                    Logger.Verbose("[{RequestId}] Body:\n{Body}", requestId, truncated);
                 }
             }
             else if (context.Request.ContentType?.Contains("multipart/form-data") == true)
@@ -67,7 +67,7 @@ public class RequestLoggingMiddleware
                         formInfo.AppendLine($"  [file] {file.Name}: {file.FileName} ({file.Length} bytes, {file.ContentType})");
                     }
                 }
-                _logger.LogTrace("[{RequestId}] Form data:\n{FormInfo}", requestId, formInfo.ToString().TrimEnd());
+                Logger.Verbose("[{RequestId}] Form data:\n{FormInfo}", requestId, formInfo.ToString().TrimEnd());
             }
         }
 
@@ -75,12 +75,12 @@ public class RequestLoggingMiddleware
         {
             await _next(context);
 
-            _logger.LogInformation("[{RequestId}] ← {StatusCode} {Method} {Path}",
+            Logger.Information("[{RequestId}] ← {StatusCode} {Method} {Path}",
                 requestId, context.Response.StatusCode, method, path);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[{RequestId}] ✖ {Method} {Path} — Unhandled exception",
+            Logger.Error(ex, "[{RequestId}] ✖ {Method} {Path} — Unhandled exception",
                 requestId, method, path);
             throw;
         }

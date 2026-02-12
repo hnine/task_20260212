@@ -1,4 +1,5 @@
 using Serilog;
+using EmployeeContactManager.Api;
 using EmployeeContactManager.Api.CQRS.Handlers;
 using EmployeeContactManager.Api.Data;
 using EmployeeContactManager.Api.Middleware;
@@ -18,7 +19,8 @@ try
     builder.Host.UseSerilog((context, services, configuration) => configuration
         .ReadFrom.Configuration(context.Configuration)
         .ReadFrom.Services(services)
-        .Enrich.FromLogContext());
+        .Enrich.FromLogContext()
+        .Enrich.With<CallerMethodEnricher>());
 
     builder.Services.AddControllers();
 

@@ -1,18 +1,18 @@
 using EmployeeContactManager.Api.CQRS.Commands;
 using EmployeeContactManager.Api.Data;
 using EmployeeContactManager.Api.Domain;
+using ILogger = Serilog.ILogger;
 
 namespace EmployeeContactManager.Api.CQRS.Handlers;
 
 public class AddEmployeesHandler
 {
     private readonly IDbProxy _db;
-    private readonly ILogger<AddEmployeesHandler> _logger;
+    private static readonly ILogger Logger = AppLogger.ForContext<AddEmployeesHandler>();
 
-    public AddEmployeesHandler(IDbProxy db, ILogger<AddEmployeesHandler> logger)
+    public AddEmployeesHandler(IDbProxy db)
     {
         _db = db;
-        _logger = logger;
     }
 
     public AddEmployeesResult Handle(AddEmployeesCommand command)
@@ -24,7 +24,7 @@ public class AddEmployeesHandler
                 .SelectMany(kvp => kvp.Value.Select(e => $"Row {kvp.Key + 1}: [{e.Field}] {e.Message}"))
                 .ToList();
 
-            _logger.LogWarning("Validation failed for {ErrorCount} employee(s): {Errors}",
+            Logger.Warning("Validation failed for {ErrorCount} employee(s): {Errors}",
                 validationErrors.Count, string.Join("; ", errorMessages));
 
             return new AddEmployeesResult(0, errorMessages);
@@ -34,16 +34,16 @@ public class AddEmployeesHandler
         var duplicateErrors = CheckForDuplicates(command.Employees);
         if (duplicateErrors.Count > 0)
         {
-            _logger.LogWarning("Duplicate employee(s) detected: {Errors}", string.Join("; ", duplicateErrors));
+            Logger.Warning("Duplicate employee(s) detected: {Errors}", string.Join("; ", duplicateErrors));
             return new AddEmployeesResult(0, duplicateErrors);
         }
 
         // Deduplicate names: if only name matches (but different data), rename to "{name} {counter}"
         var deduplicatedEmployees = DeduplicateNames(command.Employees);
 
-        _logger.LogInformation("Adding {Count} employees", deduplicatedEmployees.Count);
+        Logger.Information("Adding {Count} employees", deduplicatedEmployees.Count);
         _db.AddRange(deduplicatedEmployees);
-        _logger.LogInformation("Successfully added {Count} employees", deduplicatedEmployees.Count);
+        Logger.Information("Successfully added {Count} employees", deduplicatedEmployees.Count);
         return new AddEmployeesResult(deduplicatedEmployees.Count, new List<string>());
     }
 
@@ -101,7 +101,7 @@ public class AddEmployeesHandler
                     counter++;
                 } while (_db.Exists(finalName) || usedNames.Contains(finalName));
 
-                _logger.LogDebug("Duplicate name '{OriginalName}' renamed to '{NewName}'",
+                Logger.Debug("Duplicate name '{OriginalName}' renamed to '{NewName}'",
                     emp.Name, finalName);
             }
 
