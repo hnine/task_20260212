@@ -15,6 +15,10 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
 
+    // ── Server port (configurable via appsettings.json) ─────────────
+    var port = builder.Configuration.GetValue<int>("Server:Port", 5086);
+    builder.WebHost.UseUrls($"http://localhost:{port}");
+
     // ── Serilog ──────────────────────────────────────────────────────
     builder.Host.UseSerilog((context, services, configuration) => configuration
         .ReadFrom.Configuration(context.Configuration)
@@ -24,19 +28,29 @@ try
 
     builder.Services.AddControllers();
 
-    // ── OpenAPI / Swagger ────────────────────────────────────────────
-    builder.Services.AddEndpointsApiExplorer();
-    builder.Services.AddSwaggerGen(c =>
-    {
-        c.SwaggerDoc("v1", new() { Title = "Employee Contact Manager API", Version = "v1" });
-    });
+    // ── OpenAPI / Swagger (configurable via appsettings.json) ────────
+    var swaggerEnabled = builder.Configuration.GetValue<bool>("Swagger:Enabled", true);
+    var swaggerTitle = builder.Configuration.GetValue<string>("Swagger:Title") ?? "Employee Contact Manager API";
+    var swaggerVersion = builder.Configuration.GetValue<string>("Swagger:Version") ?? "v1";
 
-    // ── CORS (allow React frontend) ─────────────────────────────────
+    if (swaggerEnabled)
+    {
+        builder.Services.AddEndpointsApiExplorer();
+        builder.Services.AddSwaggerGen(c =>
+        {
+            c.SwaggerDoc(swaggerVersion, new() { Title = swaggerTitle, Version = swaggerVersion });
+        });
+    }
+
+    // ── CORS (configurable via appsettings.json) ─────────────────────
+    var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+                         ?? new[] { "http://localhost:5173", "http://localhost:3000" };
+
     builder.Services.AddCors(options =>
     {
         options.AddPolicy("AllowFrontend", policy =>
         {
-            policy.WithOrigins("http://localhost:5173", "http://localhost:3000")
+            policy.WithOrigins(allowedOrigins)
                   .AllowAnyHeader()
                   .AllowAnyMethod();
         });
@@ -61,11 +75,11 @@ try
     app.UseSerilogRequestLogging();
     app.UseMiddleware<PerformanceMonitoringMiddleware>();
 
-    // ── Swagger (dev only) ──────────────────────────────────────────
-    if (app.Environment.IsDevelopment())
+    // ── Swagger ─────────────────────────────────────────────────────
+    if (swaggerEnabled)
     {
         app.UseSwagger();
-        app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Employee Contact Manager v1"));
+        app.UseSwaggerUI(c => c.SwaggerEndpoint($"/swagger/{swaggerVersion}/swagger.json", $"{swaggerTitle} {swaggerVersion}"));
     }
 
     app.UseCors("AllowFrontend");
@@ -73,7 +87,9 @@ try
 
     var dbType = builder.Configuration.GetValue<string>("Database:Type") ?? "InMemory";
     Log.Information("✔ Database provider: {DbType}", dbType);
-    Log.Information("🚀 Employee Contact Manager API started");
+    Log.Information("✔ CORS allowed origins: {Origins}", string.Join(", ", allowedOrigins));
+    Log.Information("✔ Swagger: {SwaggerStatus}", swaggerEnabled ? "enabled" : "disabled");
+    Log.Information("🚀 Employee Contact Manager API started on port {Port}", port);
 
     app.Run();
 }
