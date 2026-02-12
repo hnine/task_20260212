@@ -18,6 +18,8 @@ A full-stack Employee Contact Manager built with **.NET 8 Web API** and **React 
 ```
 exam/
 ├── src/EmployeeContactManager.Api/
+│   ├── AppLogger.cs                    # Singleton logger (no DI injection)
+│   ├── CallerMethodEnricher.cs         # Auto-captures caller method name
 │   ├── Controllers/                    # API endpoints + UploadRequest model
 │   ├── CQRS/                           # Commands, Queries, Handlers
 │   ├── Data/                           # DB proxies, parsers, EF Core context
@@ -29,7 +31,7 @@ exam/
 │   ├── Templates/                      # T4-style SQL generator (reflection-based)
 │   ├── SeedData/                       # Sample CSV & JSON data
 │   ├── Program.cs
-│   └── appsettings.json
+│   └── appsettings.json                # All config: logging, CORS, port, DB, Swagger
 ├── tools/SqlGenerator/                 # Pre-build tool for auto SQL generation
 ├── tests/EmployeeContactManager.Tests/ # xUnit tests (43 tests)
 ├── frontend/                           # React + Vite
@@ -48,7 +50,7 @@ dotnet run --project src/EmployeeContactManager.Api
 cd frontend && npm install && npm run dev
 ```
 
-- **Backend**: http://localhost:5086
+- **Backend**: http://localhost:5086 (configurable via `Server:Port` in `appsettings.json`)
 - **Frontend**: http://localhost:5173
 - **OpenAPI / Swagger**: http://localhost:5086/swagger
 
@@ -56,36 +58,21 @@ cd frontend && npm install && npm run dev
 
 ## OpenAPI Documentation
 
-The API is fully documented with **OpenAPI (Swagger)** using Swashbuckle.
+The API is fully documented with **OpenAPI (Swagger)** using Swashbuckle. Swagger is configurable in `appsettings.json`:
 
-### Accessing Swagger UI
-
-1. Start the backend in development mode:
-
-   ```bash
-   dotnet run --project src/EmployeeContactManager.Api
-   ```
-
-2. Open your browser and navigate to:
-
-   ```
-   http://localhost:5086/swagger
-   ```
-
-3. The Swagger UI provides:
-   - **Interactive API explorer** — test all endpoints directly in the browser
-   - **Request/Response schemas** — see the expected input/output formats
-   - **Try it out** — click "Try it out" on any endpoint to send test requests
-
-### OpenAPI JSON Spec
-
-The raw OpenAPI JSON specification is available at:
-
-```
-http://localhost:5086/swagger/v1/swagger.json
+```json
+{
+  "Swagger": {
+    "Enabled": true,
+    "Title": "Employee Contact Manager API",
+    "Version": "v1"
+  }
+}
 ```
 
-You can import this URL into tools like **Postman**, **Insomnia**, or any OpenAPI-compatible client to auto-generate request collections.
+- **Swagger UI**: http://localhost:5086/swagger
+- **OpenAPI JSON**: http://localhost:5086/swagger/v1/swagger.json
+- Set `"Enabled": false` to disable in production
 
 ---
 
@@ -116,18 +103,35 @@ You can import this URL into tools like **Postman**, **Insomnia**, or any OpenAP
 
 ---
 
-## Database Configuration
+## Configuration (`appsettings.json`)
 
-Configure the database type in `appsettings.json`:
+All settings are configurable via `appsettings.json` — no code changes needed:
 
 ```json
 {
-  "Database": {
-    "Type": "InMemory",
-    "ConnectionString": ""
-  }
+  "Server": { "Port": 5086 },
+  "Cors": {
+    "AllowedOrigins": ["http://localhost:5173", "http://localhost:3000"]
+  },
+  "Swagger": {
+    "Enabled": true,
+    "Title": "Employee Contact Manager API",
+    "Version": "v1"
+  },
+  "Database": { "Type": "InMemory", "ConnectionString": "" }
 }
 ```
+
+| Setting               | Default                 | Description                  |
+| --------------------- | ----------------------- | ---------------------------- |
+| `Server:Port`         | `5086`                  | HTTP listen port             |
+| `Cors:AllowedOrigins` | `localhost:5173, :3000` | Allowed CORS origins (array) |
+| `Swagger:Enabled`     | `true`                  | Enable/disable Swagger UI    |
+| `Database:Type`       | `InMemory`              | Database backend             |
+
+---
+
+## Database Configuration
 
 ### Supported Database Types
 
@@ -208,29 +212,36 @@ Alice Johnson, alice@example.com, 010-1234-5678, 2022.03.15, 1990.05.20
 
 ## Logging
 
-Uses **Serilog** with console and rolling file sinks.
+Uses **Serilog** with a **singleton pattern** (`AppLogger`) — no DI injection needed. Access via `AppLogger.ForContext<T>()` or the static convenience methods.
 
-| Level       | What's Logged                                             |
-| ----------- | --------------------------------------------------------- |
-| Information | API calls, request method/path, employee operations       |
-| Debug       | HTTP headers, request bodies, multipart form data details |
-| Warning     | Validation failures                                       |
+### Log Format
 
-Log files: `logs/employee-api-{date}.log` (30-day retention)
+Configurable via `outputTemplate` in `appsettings.json`:
 
-To enable debug-level logging for detailed request inspection, update `appsettings.json`:
+```
+[2026-02-12 19:22:45.476] [INF] - GET /api/employee?page=1&pageSize=5 [GetAll]
+[2026-02-12 19:22:45.480] [DBG] - ⏱ GET /api/employee completed in 3ms [InvokeAsync]
+[2026-02-12 19:22:45.500] [WRN] - ⚠ Slow request: POST took 600ms [InvokeAsync]
+```
+
+Format: `[Timestamp] [Level] - {Message} [CallerMethod]`
+
+| Level       | Abbreviation | What's Logged                           |
+| ----------- | ------------ | --------------------------------------- |
+| Information | `INF`        | API calls, employee operations, startup |
+| Debug       | `DBG`        | Performance timing, duplicate renames   |
+| Warning     | `WRN`        | Validation failures, slow requests      |
+| Verbose     | `VRB`        | Request headers, bodies, form data      |
+
+### Customizing Format
+
+Change the `outputTemplate` in `appsettings.json` → `Serilog:WriteTo:Args`:
 
 ```json
-{
-  "Serilog": {
-    "MinimumLevel": {
-      "Override": {
-        "EmployeeContactManager": "Debug"
-      }
-    }
-  }
-}
+"outputTemplate": "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff}] [{Level:u3}] - {Message:lj} [{CallerMethod}]{NewLine}{Exception}"
 ```
+
+Log files: `logs/employee-api-{date}.log` (30-day retention)
 
 ---
 
