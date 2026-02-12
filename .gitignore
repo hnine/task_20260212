@@ -41,9 +41,6 @@ frontend/.env.local
 logs/
 *.log
 
-# Data files
-data/
-
 # Misc
 *.tmp
 *.bak
