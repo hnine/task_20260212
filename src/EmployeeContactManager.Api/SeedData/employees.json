@@ -1,0 +1,23 @@
+[
+  {
+    "name": "Fiona Wang",
+    "email": "fiona@example.com",
+    "tel": "010-6789-0123",
+    "joined": "2023-05-20",
+    "birthDate": "1993-07-15"
+  },
+  {
+    "name": "George Han",
+    "email": "george@example.com",
+    "tel": "010-7890-1234",
+    "joined": "2021-12-01",
+    "birthDate": "1987-03-22"
+  },
+  {
+    "name": "Hannah Choi",
+    "email": "hannah@example.com",
+    "tel": "010-8901-2345",
+    "joined": "2022-06-14",
+    "birthDate": "1994-09-10"
+  }
+]

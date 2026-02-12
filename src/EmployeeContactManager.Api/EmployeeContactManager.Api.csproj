@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Update="SeedData\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="StoredProcedures\**\*.sql">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.8" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.8">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.8" />
+    <PackageReference Include="MySqlConnector" Version="2.3.7" />
+    <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="8.0.2" />
+    <PackageReference Include="Serilog.AspNetCore" Version="8.0.3" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" />
+  </ItemGroup>
+  <!-- Pre-build: Auto-regenerate stored procedure SQL when Employee.cs changes -->
+  <Target Name="RegenerateSqlFiles" BeforeTargets="BeforeBuild"
+          Inputs="$(MSBuildProjectDirectory)/Domain/Employee.cs"
+          Outputs="$(MSBuildProjectDirectory)/StoredProcedures/MySQL/StoredProcedures.sql;$(MSBuildProjectDirectory)/StoredProcedures/MSSQL/StoredProcedures.sql">
+    <Message Text="🔄 Employee.cs changed — regenerating stored procedure SQL files..." Importance="high" />
+    <Exec Command="dotnet run --project &quot;$(MSBuildProjectDirectory)/../../tools/SqlGenerator/SqlGenerator.csproj&quot; -- &quot;$(MSBuildProjectDirectory)&quot;" />
+    <Message Text="✔ Stored procedure SQL files regenerated." Importance="high" />
+  </Target>
+
+</Project>

@@ -1,0 +1,49 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+build/
+bld/
+
+# NuGet
+*.nupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+
+# IDE
+.vs/
+.vscode/.ropeproject
+*.swp
+*~
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+
+# Logs
+logs/
+*.log
+
+# Data files
+data/
+
+# Misc
+*.tmp
+*.bak
