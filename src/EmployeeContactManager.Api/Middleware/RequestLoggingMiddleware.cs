@@ -23,17 +23,17 @@ public class RequestLoggingMiddleware
         _logger.LogInformation("[{RequestId}] → {Method} {Path}{Query}",
             requestId, method, path, queryString);
 
-        // Debug: log request headers
-        if (_logger.IsEnabled(LogLevel.Debug))
+        // Trace: log request headers
+        if (_logger.IsEnabled(LogLevel.Trace))
         {
             var headers = new StringBuilder();
             foreach (var header in context.Request.Headers)
             {
                 headers.AppendLine($"  {header.Key}: {header.Value}");
             }
-            _logger.LogDebug("[{RequestId}] Headers:\n{Headers}", requestId, headers.ToString().TrimEnd());
+            _logger.LogTrace("[{RequestId}] Headers:\n{Headers}", requestId, headers.ToString().TrimEnd());
 
-            // Debug: log request body (for non-file requests)
+            // Trace: log request body (for non-file requests)
             if (context.Request.ContentType != null &&
                 !context.Request.ContentType.Contains("multipart/form-data"))
             {
@@ -45,7 +45,7 @@ public class RequestLoggingMiddleware
                 if (!string.IsNullOrWhiteSpace(body))
                 {
                     var truncated = body.Length > 2000 ? body[..2000] + "... (truncated)" : body;
-                    _logger.LogDebug("[{RequestId}] Body:\n{Body}", requestId, truncated);
+                    _logger.LogTrace("[{RequestId}] Body:\n{Body}", requestId, truncated);
                 }
             }
             else if (context.Request.ContentType?.Contains("multipart/form-data") == true)
@@ -67,7 +67,7 @@ public class RequestLoggingMiddleware
                         formInfo.AppendLine($"  [file] {file.Name}: {file.FileName} ({file.Length} bytes, {file.ContentType})");
                     }
                 }
-                _logger.LogDebug("[{RequestId}] Form data:\n{FormInfo}", requestId, formInfo.ToString().TrimEnd());
+                _logger.LogTrace("[{RequestId}] Form data:\n{FormInfo}", requestId, formInfo.ToString().TrimEnd());
             }
         }
 
